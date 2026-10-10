@@ -1,0 +1,175 @@
+import { Profile } from "../types/profile";
+
+export const MOCK_PROFILES: Profile[] = [
+  {
+    id: "profile-1",
+    name: "A.",
+    age: 21,
+    degree: "B.Tech",
+    year: "3rd Year",
+    branch: "Computer Science",
+    isVerified: true,
+    matchPercentage: 94,
+    photos: [
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "Music", emoji: "🎵" },
+      { id: "2", label: "Badminton", emoji: "🏸" },
+      { id: "3", label: "Coding", emoji: "💻" },
+      { id: "4", label: "Coffee", emoji: "☕" },
+      { id: "5", label: "Travel", emoji: "✈️" },
+      { id: "6", label: "Photography", emoji: "📷" },
+      { id: "7", label: "Books", emoji: "📖" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“My ideal Sunday is good food, music and getting lost in a new city.”",
+      },
+    ],
+  },
+  {
+    id: "profile-2",
+    name: "R.",
+    age: 22,
+    degree: "B.Des",
+    year: "4th Year",
+    branch: "Interaction Design",
+    isVerified: true,
+    matchPercentage: 91,
+    photos: [
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "UI/UX", emoji: "🎨" },
+      { id: "2", label: "Guitar", emoji: "🎸" },
+      { id: "3", label: "Late Night Drives", emoji: "🚗" },
+      { id: "4", label: "Filter Coffee", emoji: "☕" },
+      { id: "5", label: "Anime", emoji: "🍙" },
+      { id: "6", label: "Graphic Novels", emoji: "📚" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“Let’s debate why kerning matters over chai at the canteen.”",
+      },
+    ],
+  },
+  {
+    id: "profile-3",
+    name: "S.",
+    age: 20,
+    degree: "B.Tech",
+    year: "2nd Year",
+    branch: "Electronics & Comm.",
+    isVerified: true,
+    matchPercentage: 88,
+    photos: [
+      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "Robotics", emoji: "🤖" },
+      { id: "2", label: "Synthwave", emoji: "🎧" },
+      { id: "3", label: "Basketball", emoji: "🏀" },
+      { id: "4", label: "Star Gazing", emoji: "✨" },
+      { id: "5", label: "Podcasts", emoji: "🎙️" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“Teach me something you’re obsessed with, and I’ll buy the snacks.”",
+      },
+    ],
+  },
+  {
+    id: "profile-4",
+    name: "K.",
+    age: 21,
+    degree: "B.A.",
+    year: "3rd Year",
+    branch: "Economics & Finance",
+    isVerified: true,
+    matchPercentage: 96,
+    photos: [
+      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "Debating", emoji: "🎙️" },
+      { id: "2", label: "Tennis", emoji: "🎾" },
+      { id: "3", label: "Indie Pop", emoji: "🎶" },
+      { id: "4", label: "Baking", emoji: "🥐" },
+      { id: "5", label: "Museums", emoji: "🏛️" },
+      { id: "6", label: "Chess", emoji: "♟️" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“Quickest way to win me over? Recommend a song that gives you chills.”",
+      },
+    ],
+  },
+  {
+    id: "profile-5",
+    name: "M.",
+    age: 22,
+    degree: "B.Sc",
+    year: "3rd Year",
+    branch: "Biotechnology",
+    isVerified: true,
+    matchPercentage: 85,
+    photos: [
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "Nature Trails", emoji: "🌿" },
+      { id: "2", label: "Yoga", emoji: "🧘" },
+      { id: "3", label: "Film Cameras", emoji: "🎞️" },
+      { id: "4", label: "Matcha", emoji: "🍵" },
+      { id: "5", label: "Poetry", emoji: "✍️" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“The unwritten campus rule everyone should follow: Return library books on time!”",
+      },
+    ],
+  },
+  {
+    id: "profile-6",
+    name: "V.",
+    age: 23,
+    degree: "MBA",
+    year: "1st Year",
+    branch: "Marketing & Strategy",
+    isVerified: true,
+    matchPercentage: 89,
+    photos: [
+      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=800&q=80",
+    ],
+    tags: [
+      { id: "1", label: "Startups", emoji: "🚀" },
+      { id: "2", label: "Running", emoji: "🏃" },
+      { id: "3", label: "Espresso", emoji: "☕" },
+      { id: "4", label: "Live Gigs", emoji: "🎸" },
+      { id: "5", label: "Board Games", emoji: "🎲" },
+    ],
+    icebreakers: [
+      {
+        prompt: "ICEBREAKER",
+        text: "“Let’s brainstorm crazy startup ideas at 2 AM.”",
+      },
+    ],
+  },
+];

@@ -5,6 +5,7 @@ from app.models.profile_action import ProfileAction
 from app.models.match import Match
 from app.models.message import Message
 from app.models.message_request import MessageRequest
+from app.models.verification_token import VerificationToken
 
 __all__ = [
     "User",
@@ -14,4 +15,5 @@ __all__ = [
     "Match",
     "Message",
     "MessageRequest",
+    "VerificationToken",
 ]

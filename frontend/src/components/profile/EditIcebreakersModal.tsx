@@ -9,7 +9,7 @@ interface EditIcebreakersModalProps {
   currentIcebreakers: IcebreakerItem[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updated: IcebreakerItem[]) => void;
+  onSave: (updated: IcebreakerItem[]) => Promise<void>;
 }
 
 export function EditIcebreakersModal({
@@ -22,6 +22,8 @@ export function EditIcebreakersModal({
   const [selectedPrompt, setSelectedPrompt] = useState(ICEBREAKER_PROMPTS[0]);
   const [newAnswer, setNewAnswer] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   React.useEffect(() => {
     setIcebreakers(currentIcebreakers);
@@ -55,14 +57,26 @@ export function EditIcebreakersModal({
     setShowAddForm(false);
   };
 
-  const handleSave = () => {
-    onSave(icebreakers);
-    onClose();
+  const handleSave = async () => {
+    if (icebreakers.some((item) => !item.prompt.trim() || !item.text.trim())) {
+      setSaveError("Each icebreaker needs a prompt and an answer.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(icebreakers);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save icebreakers.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg max-h-[85vh] rounded-t-[28px] sm:rounded-[28px] bg-[#121424] border border-white/10 shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg max-h-[85dvh] rounded-t-[28px] sm:rounded-[28px] bg-[#121424] border border-white/10 shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.08] shrink-0">
           <div>
@@ -74,6 +88,7 @@ export function EditIcebreakersModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={saving}
             aria-label="Close icebreakers modal"
             className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
           >
@@ -82,7 +97,7 @@ export function EditIcebreakersModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-5 space-y-4">
           {/* Active Icebreakers List */}
           <div className="space-y-3">
             {icebreakers.map((item, idx) => (
@@ -108,6 +123,7 @@ export function EditIcebreakersModal({
                   onChange={(e) => handleUpdateText(idx, e.target.value)}
                   rows={2}
                   maxLength={150}
+                  required
                   className="w-full px-3 py-2 rounded-xl bg-[#111322] border border-white/10 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-[#B365FC] resize-none"
                 />
               </div>
@@ -187,17 +203,18 @@ export function EditIcebreakersModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-white/[0.08] bg-[#0E101D] flex items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-3 border-t border-white/[0.08] bg-[#0E101D] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <span className="text-xs text-slate-400">
             {icebreakers.length} active prompts
           </span>
+          {saveError && <p role="alert" className="text-xs text-red-300">{saveError}</p>}
           <button
             type="button"
-            onClick={handleSave}
-            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#9B42F6] to-[#E93C9A] text-white text-xs font-bold shadow-lg shadow-purple-500/25 hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#9B42F6] to-[#E93C9A] text-white text-xs font-bold shadow-lg shadow-purple-500/25 hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
           >
-            <CheckIcon className="w-4 h-4" />
-            <span>Save Icebreakers</span>
+            {saving ? <span>Saving...</span> : <><CheckIcon className="w-4 h-4" /><span>Save Icebreakers</span></>}
           </button>
         </div>
       </div>

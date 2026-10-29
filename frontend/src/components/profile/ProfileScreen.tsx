@@ -16,14 +16,14 @@ import { SettingsModal, SettingsTab } from "./SettingsModal";
 import { TagItem, IcebreakerItem } from "../../types/profile";
 import { UserProfile, UserProfileLifestyle } from "../../data/mockUserProfile";
 import { getAccessToken } from "../../lib/token";
+import { resolveApiMediaUrl } from "../../lib/api";
 
 import {
   getMyProfile,
   updateProfile as apiUpdateProfile,
-  addProfilePhoto as apiAddProfilePhoto,
-  deleteProfilePhoto as apiDeleteProfilePhoto,
-  reorderProfilePhotos as apiReorderProfilePhotos,
+  syncProfilePhotos as apiSyncProfilePhotos,
   BackendProfile,
+  ProfilePhotoSelection,
 } from "../../lib/profile";
 
 const DEFAULT_LIFESTYLE: UserProfileLifestyle = {
@@ -91,7 +91,7 @@ export function ProfileScreen() {
 
       const photosUrls = (data.photos || [])
         .sort((a, b) => a.position - b.position)
-        .map((photo) => photo.url);
+        .map((photo) => resolveApiMediaUrl(photo.url));
 
       const formattedProfile: UserProfile = {
         id: String(data.id),
@@ -100,8 +100,8 @@ export function ProfileScreen() {
         degree: data.degree || "Degree",
         year: data.year || "Year",
         branch: data.branch || "Branch",
-        university: "CampusVerse College",
-        campus: "Main Campus",
+        university: data.university ?? "CampusVerse College",
+        campus: data.campus ?? "Main Campus",
         isVerified: data.is_verified,
         isStudentVerified: true,
         bio: data.bio || "",
@@ -112,9 +112,11 @@ export function ProfileScreen() {
           profileViews: 45,
           completeness: 80,
         },
-        lifestyle: DEFAULT_LIFESTYLE,
-        interests: DEFAULT_INTERESTS,
-        icebreakers: DEFAULT_ICEBREAKERS,
+        lifestyle: data.lifestyle
+          ? { ...DEFAULT_LIFESTYLE, ...data.lifestyle }
+          : DEFAULT_LIFESTYLE,
+        interests: data.interests ?? DEFAULT_INTERESTS,
+        icebreakers: data.icebreakers ?? DEFAULT_ICEBREAKERS,
       };
 
       setProfile(formattedProfile);
@@ -165,92 +167,58 @@ export function ProfileScreen() {
     };
   }, [profile, completeness]);
 
+  const photoManagerPhotos = useMemo(
+    () =>
+      (backendProfile?.photos || [])
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((photo) => ({
+          id: photo.id,
+          url: resolveApiMediaUrl(photo.url),
+        })),
+    [backendProfile?.photos]
+  );
+
   // Photo update handler - sync with backend
-  const handleSavePhotos = async (updatedPhotoUrls: string[]) => {
-    if (!backendProfile) return;
+  const handleSavePhotos = async (updatedPhotos: ProfilePhotoSelection[]) => {
+    if (!backendProfile) throw new Error("Your profile is not ready to save.");
 
     const token = getAccessToken();
 
     if (!token) {
-      setError("Please log in to save photos.");
-      return;
+      throw new Error("Please log in to save photos.");
     }
 
     setSaving(true);
     setError(null);
 
     try {
-      const currentPhotos = backendProfile.photos || [];
-
-      // Delete removed photos
-      const toDelete = currentPhotos.filter(
-        (photo) => !updatedPhotoUrls.includes(photo.url)
+      const updatedBackendPhotos = await apiSyncProfilePhotos(
+        backendProfile.id,
+        updatedPhotos,
+        token
       );
 
-      for (const photo of toDelete) {
-        await apiDeleteProfilePhoto(backendProfile.id, photo.id, token);
-      }
-
-      // Add new photos
-      const existingUrls = currentPhotos.map((photo) => photo.url);
-      const toAdd = updatedPhotoUrls.filter(
-        (url) => !existingUrls.includes(url)
+      setBackendProfile((previous) =>
+        previous ? { ...previous, photos: updatedBackendPhotos } : previous
       );
-
-      for (const url of toAdd) {
-        const targetPosition = updatedPhotoUrls.indexOf(url);
-        await apiAddProfilePhoto(
-          backendProfile.id,
-          url,
-          targetPosition,
-          token
-        );
-      }
-
-      // Refresh profile to retrieve current photo IDs
-      const refreshed = await getMyProfile(token);
-
-      // Reorder photos
-      const reorderPayload = refreshed.photos
-        .map((photo) => {
-          const newPosition = updatedPhotoUrls.indexOf(photo.url);
-
-          return {
-            photo_id: photo.id,
-            position: newPosition,
-          };
-        })
-        .filter((item) => item.position !== -1);
-
-      if (reorderPayload.length > 0) {
-        const reordered = await apiReorderProfilePhotos(
-          backendProfile.id,
-          reorderPayload,
-          token
-        );
-
-        refreshed.photos = reordered;
-      }
-
-      setBackendProfile(refreshed);
 
       setProfile((previous) =>
         previous
           ? {
             ...previous,
-            photos: [...refreshed.photos]
+            photos: [...updatedBackendPhotos]
               .sort((a, b) => a.position - b.position)
-              .map((photo) => photo.url),
+              .map((photo) => resolveApiMediaUrl(photo.url)),
           }
-          : null
+          : previous
       );
 
       notifySuccess("Photos updated successfully!");
     } catch (err) {
-      console.error("Failed to update photos:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to save photos."
-      );
+      const message = err instanceof Error ? err.message : "Failed to save photos.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setSaving(false);
     }
@@ -290,6 +258,9 @@ export function ProfileScreen() {
           year: updated.year,
           branch: updated.branch,
           bio: updated.bio,
+          university: updated.university,
+          campus: updated.campus,
+          lifestyle: updated.lifestyle,
         },
         token
       );
@@ -304,6 +275,9 @@ export function ProfileScreen() {
             year: updatedBackend.year,
             branch: updatedBackend.branch,
             bio: updatedBackend.bio,
+            university: updatedBackend.university,
+            campus: updatedBackend.campus,
+            lifestyle: updatedBackend.lifestyle,
           }
           : previous
       );
@@ -328,30 +302,71 @@ export function ProfileScreen() {
       notifySuccess("Profile information saved!");
     } catch (err) {
       console.error("Failed to save profile:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to save profile."
-      );
+      const message = err instanceof Error ? err.message : "Failed to save profile.";
+      setError(message);
+      throw new Error(message);
     } finally {
       setSaving(false);
     }
   };
 
   // Interests update handler
-  const handleSaveInterests = (updatedInterests: TagItem[]) => {
-    setProfile((previous) =>
-      previous ? { ...previous, interests: updatedInterests } : null
-    );
+  const handleSaveInterests = async (updatedInterests: TagItem[]) => {
+    if (!backendProfile) throw new Error("Your profile is not ready to save.");
+    const token = getAccessToken();
+    if (!token) throw new Error("Please log in to save interests.");
 
-    notifySuccess("Interests updated!");
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await apiUpdateProfile(
+        backendProfile.id,
+        { interests: updatedInterests },
+        token
+      );
+      setBackendProfile((previous) =>
+        previous ? { ...previous, interests: result.interests } : previous
+      );
+      setProfile((previous) =>
+        previous ? { ...previous, interests: result.interests ?? updatedInterests } : previous
+      );
+      notifySuccess("Interests updated!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save interests.";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Icebreakers update handler
-  const handleSaveIcebreakers = (updatedIcebreakers: IcebreakerItem[]) => {
-    setProfile((previous) =>
-      previous ? { ...previous, icebreakers: updatedIcebreakers } : null
-    );
+  const handleSaveIcebreakers = async (updatedIcebreakers: IcebreakerItem[]) => {
+    if (!backendProfile) throw new Error("Your profile is not ready to save.");
+    const token = getAccessToken();
+    if (!token) throw new Error("Please log in to save icebreakers.");
 
-    notifySuccess("Icebreakers updated!");
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await apiUpdateProfile(
+        backendProfile.id,
+        { icebreakers: updatedIcebreakers },
+        token
+      );
+      setBackendProfile((previous) =>
+        previous ? { ...previous, icebreakers: result.icebreakers } : previous
+      );
+      setProfile((previous) =>
+        previous ? { ...previous, icebreakers: result.icebreakers ?? updatedIcebreakers } : previous
+      );
+      notifySuccess("Icebreakers updated!");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save icebreakers.";
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleOpenSettingsTab = (tab: SettingsTab) => {
@@ -457,7 +472,7 @@ export function ProfileScreen() {
 
       {/* Modals & Bottom Sheets */}
       <PhotoManagerModal
-        photos={profile.photos}
+        photos={photoManagerPhotos}
         isOpen={isPhotoManagerOpen}
         onClose={() => setIsPhotoManagerOpen(false)}
         onSavePhotos={handleSavePhotos}

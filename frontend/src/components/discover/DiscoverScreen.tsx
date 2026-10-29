@@ -5,134 +5,15 @@ import { ProfileCard } from "./ProfileCard";
 import { ProfileActions } from "./ProfileActions";
 import { MessageComposerModal } from "./MessageComposerModal";
 import { HeartIcon, CheckIcon } from "../common/Icons";
-import { Profile, TagItem, IcebreakerItem } from "../../types/profile";
+import { Profile } from "../../types/profile";
 import { BackendProfile } from "../../lib/profile";
-import { getDiscoverProfiles, createAction, rewindLastAction } from "../../lib/discover";
+import {
+  getDiscoverProfiles,
+  createAction,
+  rewindLastAction,
+  toDiscoverCardProfile,
+} from "../../lib/discover";
 import { getAccessToken } from "../../lib/token";
-import { AVAILABLE_INTERESTS, ICEBREAKER_PROMPTS } from "../../data/mockUserProfile";
-
-/**
- * Deterministic tag generation based on branch / degree / display name
- * so that real backend profiles display rich, relevant campus interests & hobbies
- */
-function deriveTagsForProfile(bp: BackendProfile): TagItem[] {
-  const branchLower = (bp.branch || "").toLowerCase();
-  const degreeLower = (bp.degree || "").toLowerCase();
-  const bioLower = (bp.bio || "").toLowerCase();
-
-  const tags: TagItem[] = [];
-
-  const addTag = (id: string) => {
-    const item = AVAILABLE_INTERESTS.find((i) => i.id === id);
-    if (item && !tags.some((t) => t.label === item.label)) {
-      tags.push(item);
-    }
-  };
-
-  // Branch & study interests
-  if (branchLower.includes("cs") || branchLower.includes("computer") || branchLower.includes("it") || branchLower.includes("ai")) {
-    addTag("3"); // Coding
-    addTag("16"); // Startups
-    addTag("12"); // UI/UX
-  } else if (branchLower.includes("design") || degreeLower.includes("des")) {
-    addTag("12"); // UI/UX
-    addTag("2"); // Photography
-    addTag("15"); // Cinema
-  } else if (branchLower.includes("finance") || branchLower.includes("economics") || degreeLower.includes("bba") || degreeLower.includes("mba")) {
-    addTag("16"); // Startups
-    addTag("10"); // Reading
-    addTag("4"); // Coffee
-  } else {
-    addTag("1"); // Music
-    addTag("11"); // Travel
-  }
-
-  // Lifestyle interests based on bio or general campus favorites
-  if (bioLower.includes("coffee") || bioLower.includes("café") || bioLower.includes("chai")) {
-    addTag("4"); // Coffee
-  }
-  if (bioLower.includes("music") || bioLower.includes("song") || bioLower.includes("band")) {
-    addTag("1"); // Music
-  }
-  if (bioLower.includes("fitness") || bioLower.includes("gym") || bioLower.includes("workout")) {
-    addTag("9"); // Fitness
-  }
-  if (bioLower.includes("travel") || bioLower.includes("explore")) {
-    addTag("11"); // Travel
-  }
-
-  // Ensure every profile has at least 4-5 balanced tags
-  const defaults = ["1", "4", "5", "6", "7", "8", "14"]; // Music, Coffee, Late Night Drives, Badminton, Anime, Gaming, Foodie
-  let idx = 0;
-  while (tags.length < 5 && idx < defaults.length) {
-    addTag(defaults[idx]);
-    idx++;
-  }
-
-  return tags;
-}
-
-/**
- * Deterministic icebreaker prompt & answer generation
- */
-function deriveIcebreakersForProfile(bp: BackendProfile): IcebreakerItem[] {
-  if (bp.bio && bp.bio.trim().length > 0) {
-    return [
-      {
-        prompt: "Campus Icebreaker",
-        text: bp.bio.startsWith("“") || bp.bio.startsWith('"') ? bp.bio : `"${bp.bio}"`,
-      },
-    ];
-  }
-
-  // Fallback icebreaker based on student's year/degree
-  return [
-    {
-      prompt: "My ideal Sunday is...",
-      text: "Good food, discovering an indie coffee spot, and catching up on campus vibes.",
-    },
-  ];
-}
-
-/**
- * Deterministic match percentage between 84% and 97% based on profile ID
- */
-function deriveMatchPercentage(id: number): number {
-  return 85 + ((id * 7 + 13) % 13);
-}
-
-/**
- * Convert a BackendProfile (from API) to the Profile shape used by
- * ProfileCard and the rest of the Discover UI.
- */
-function toProfile(bp: BackendProfile): Profile {
-  const photos = (bp.photos || [])
-    .sort((a, b) => a.position - b.position)
-    .map((p) => p.url);
-
-  const initial =
-    bp.display_name
-      .split(" ")
-      .map((w) => w.charAt(0))
-      .join("")
-      .slice(0, 2) + ".";
-
-  return {
-    id: String(bp.id),
-    userId: bp.user_id,
-    name: initial,
-    displayName: bp.display_name,
-    age: bp.age,
-    degree: bp.degree,
-    year: bp.year,
-    branch: bp.branch,
-    isVerified: bp.is_verified,
-    matchPercentage: deriveMatchPercentage(bp.id),
-    photos: photos.length > 0 ? photos : [],
-    tags: deriveTagsForProfile(bp),
-    icebreakers: deriveIcebreakersForProfile(bp),
-  };
-}
 
 export function DiscoverScreen() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -167,7 +48,7 @@ export function DiscoverScreen() {
     try {
       const data = await getDiscoverProfiles(token);
       setBackendProfiles(data);
-      setProfiles(data.map(toProfile));
+      setProfiles(data.map(toDiscoverCardProfile));
       setCurrentIndex(0);
       setHistory([]);
       setPhotoIndices({});
@@ -386,8 +267,8 @@ export function DiscoverScreen() {
                     key={`bg-${nextProfile.id}`}
                     profile={nextProfile}
                     currentPhotoIndex={photoIndices[nextProfile.id] || 0}
-                    onNextPhoto={() => {}}
-                    onPrevPhoto={() => {}}
+                    onNextPhoto={() => { }}
+                    onPrevPhoto={() => { }}
                     isTopCard={false}
                   />
                 </div>

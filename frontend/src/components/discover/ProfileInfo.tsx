@@ -38,7 +38,9 @@ export function ProfilePhotoOverlay({ profile }: ProfileInfoProps) {
       {/* Verification & Match Percentage Badges */}
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <VerificationBadge />
-        <MatchBadge percentage={profile.matchPercentage} />
+        {profile.matchPercentage !== undefined && (
+          <MatchBadge percentage={profile.matchPercentage} />
+        )}
       </div>
     </div>
   );

@@ -37,6 +37,10 @@ class User(Base):
         nullable=False,
     )
 
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     is_premium: Mapped[bool] = mapped_column(
         Boolean,
         default=False,

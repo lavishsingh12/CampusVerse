@@ -9,7 +9,7 @@ class MessageCreate(BaseModel):
 
 class MessageResponse(BaseModel):
     id: int
-    match_id: int
+    match_id: int | None
     sender_id: int
     content: str
     created_at: datetime

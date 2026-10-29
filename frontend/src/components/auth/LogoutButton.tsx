@@ -3,14 +3,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { clearSession } from "../../lib/token";
+import { clearSession, getAccessToken } from "../../lib/token";
+import { logoutUser } from "../../lib/auth";
 
 export function LogoutButton() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
-    function handleLogout() {
+    async function handleLogout() {
         setLoading(true);
+
+        const token = getAccessToken();
+        if (token) {
+            try {
+                await logoutUser(token);
+            } catch {
+                // Ignore API network error on logout and still clear local session
+            }
+        }
 
         clearSession();
 

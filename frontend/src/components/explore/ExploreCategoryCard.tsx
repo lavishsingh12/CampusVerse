@@ -46,7 +46,7 @@ export function ExploreCategoryCard({ category, onClick }: ExploreCategoryCardPr
           {category.tagline}
         </p>
         <span className="text-[10px] text-white/70 font-medium mt-2">
-          {category.memberCount} members
+          {category.memberCount === null ? "… members" : `${category.memberCount} members`}
         </span>
       </div>
 

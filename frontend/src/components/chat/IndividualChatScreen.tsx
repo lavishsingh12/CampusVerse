@@ -6,6 +6,7 @@ import { MessageBubble } from "./MessageBubble";
 import { BackIcon, MoreVerticalIcon, SendIcon, MegaphoneIcon } from "../common/Icons";
 import { getAccessToken, getUserId } from "../../lib/token";
 import { getMatchMessages, sendMatchMessage } from "../../lib/chat";
+import { getRequestMessages, sendRequestMessage } from "../../lib/messageRequests";
 
 interface IndividualChatScreenProps {
   conversation: ConversationItem;
@@ -58,7 +59,9 @@ export function IndividualChatScreen({
       if (!isPolling) {
         setError(null);
       }
-      const rawMessages = await getMatchMessages(conversation.id, token);
+      const rawMessages = conversation.conversationKind === "request"
+        ? await getRequestMessages(conversation.id, token)
+        : await getMatchMessages(conversation.id, token);
       
       const mapped: ChatMessage[] = rawMessages.map((msg) => ({
         id: String(msg.id),
@@ -78,7 +81,7 @@ export function IndividualChatScreen({
         setLoading(false);
       }
     }
-  }, [conversation.id, myUserId]);
+  }, [conversation.id, conversation.conversationKind, myUserId]);
 
   useEffect(() => {
     void loadMessages(false);
@@ -122,7 +125,9 @@ export function IndividualChatScreen({
     setInputText("");
 
     try {
-      const savedMessage = await sendMatchMessage(conversation.id, content, token);
+      const savedMessage = conversation.conversationKind === "request"
+        ? await sendRequestMessage(conversation.id, content, token)
+        : await sendMatchMessage(conversation.id, content, token);
       
       // Replace optimistic message with confirmed backend message
       setMessages((prev) =>
@@ -225,6 +230,23 @@ export function IndividualChatScreen({
         </div>
       )}
 
+      {/* Pending Message Request Status Banner */}
+      {conversation.conversationKind === "request" && conversation.requestStatus === "pending" && (
+        <div className="mx-4 mt-2 px-3.5 py-2.5 rounded-xl bg-[#181B30] border border-[#B365FC]/30 text-xs text-slate-300 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+            <span>
+              {conversation.canSendPending
+                ? `Pending request (${messages.length}/3 messages sent)`
+                : "Incoming request awaiting your response"}
+            </span>
+          </div>
+          <span className="text-[11px] font-semibold text-[#B365FC]">
+            {conversation.canSendPending ? "3 max before match" : "Accept in Requests tab"}
+          </span>
+        </div>
+      )}
+
       {/* Message Thread */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 flex flex-col justify-start">
         {loading ? (
@@ -258,12 +280,12 @@ export function IndividualChatScreen({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Type a message..."
-            disabled={sending}
+            disabled={sending || (conversation.requestStatus === "pending" && !conversation.canSendPending)}
             className="flex-1 bg-[#181B30] border border-white/10 rounded-full px-4 py-2.5 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-[#B365FC]/70 transition-colors disabled:opacity-50"
           />
           <button
             type="submit"
-            disabled={!inputText.trim() || sending}
+            disabled={!inputText.trim() || sending || (conversation.requestStatus === "pending" && !conversation.canSendPending)}
             aria-label="Send message"
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
               inputText.trim() && !sending

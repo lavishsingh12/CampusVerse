@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,12 +15,57 @@ from app.models.profile import Profile
 from app.models.profile_action import ProfileAction
 from app.schemas.profile import ProfileDetailResponse
 from app.schemas.profile_photo import ProfilePhotoResponse
-
+from app.services.explore_relevance import category_ids, score_profiles
 
 router = APIRouter(
     prefix="/discover",
     tags=["Discover"],
 )
+
+
+class ExploreCategoryResponse(BaseModel):
+    profiles: list[ProfileDetailResponse]
+    member_count: int
+
+
+@router.get("/explore/counts", response_model=dict[str, int])
+async def get_explore_category_counts(
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    profiles = await get_discover_profiles(db=db, user_id=user_id)
+    return {category_id: len(profiles) for category_id in category_ids()}
+
+
+@router.get("/explore/{category_id}", response_model=ExploreCategoryResponse)
+async def get_explore_category_profiles(
+    category_id: str,
+    db: AsyncSession = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+):
+    if category_id not in category_ids():
+        raise HTTPException(status_code=404, detail="Explore category not found")
+
+    profiles = await get_discover_profiles(db=db, user_id=user_id)
+    viewer_profile = None
+    if category_id == "communities":
+        result = await db.execute(
+            select(Profile).where(Profile.user_id == user_id)
+        )
+        viewer_profile = result.scalar_one_or_none()
+
+    ranked_profiles = [
+        profile
+        for profile, _score in score_profiles(
+            profiles,
+            category_id,
+            viewer_profile=viewer_profile,
+        )
+    ]
+    return ExploreCategoryResponse(
+        profiles=ranked_profiles,
+        member_count=len(ranked_profiles),
+    )
 
 
 @router.get(
@@ -55,35 +101,10 @@ async def get_discover_profiles(
     # Pass is temporary and expires after cooldown.
     # ---------------------------------------------------------
 
-    recently_passed_profiles = select(
-        ProfileAction.target_profile_id
-    ).where(
+    recently_passed_profiles = select(ProfileAction.target_profile_id).where(
         ProfileAction.user_id == user_id,
         ProfileAction.action == "pass",
         ProfileAction.created_at >= cooldown_time,
-    )
-
-    # ---------------------------------------------------------
-    # 3. Pending message requests
-    #
-    # If either side has sent a pending request, both users
-    # should temporarily disappear from each other's Discover.
-    # ---------------------------------------------------------
-
-    pending_message_request_exists = exists(
-        select(MessageRequest.id).where(
-            MessageRequest.status == "pending",
-            or_(
-                (
-                    (MessageRequest.sender_id == user_id)
-                    & (MessageRequest.receiver_id == Profile.user_id)
-                ),
-                (
-                    (MessageRequest.sender_id == Profile.user_id)
-                    & (MessageRequest.receiver_id == user_id)
-                ),
-            ),
-        )
     )
 
     # ---------------------------------------------------------
@@ -141,22 +162,14 @@ async def get_discover_profiles(
         .where(
             # Only active profiles
             Profile.is_active.is_(True),
-
             # Don't show own profile
             Profile.user_id != user_id,
-
             # Hide profiles already liked
             ~Profile.id.in_(liked_profiles),
-
             # Hide recently passed profiles
             ~Profile.id.in_(recently_passed_profiles),
-
-            # Hide profiles involved in pending requests
-            ~pending_message_request_exists,
-
             # Hide recently declined requests
             ~recently_declined_request_exists,
-
             # Hide matched users
             ~existing_match_exists,
         )
@@ -175,6 +188,11 @@ async def get_discover_profiles(
             year=p.year,
             branch=p.branch,
             bio=p.bio,
+            university=p.university,
+            campus=p.campus,
+            lifestyle=p.lifestyle,
+            interests=p.interests,
+            icebreakers=p.icebreakers,
             is_verified=p.is_verified,
             is_active=p.is_active,
             photos=[

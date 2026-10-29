@@ -19,7 +19,7 @@ export interface Profile {
   year: string; // e.g. "3rd Year"
   branch: string; // e.g. "Computer Science"
   isVerified: boolean;
-  matchPercentage: number; // e.g. 94
+  matchPercentage?: number;
   photos: string[];
   tags: TagItem[]; // Combined interests and hobbies for clean chips
   icebreakers: IcebreakerItem[];

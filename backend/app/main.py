@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import api_router
 from app.core.config import settings
 
 
 def create_application() -> FastAPI:
+    settings.PROFILE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
@@ -23,6 +26,11 @@ def create_application() -> FastAPI:
         )
 
     app.include_router(api_router, prefix=settings.API_V1_STR)
+    app.mount(
+        "/uploads",
+        StaticFiles(directory=str(settings.PROFILE_UPLOAD_DIR)),
+        name="uploads",
+    )
 
     return app
 

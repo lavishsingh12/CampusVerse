@@ -2,6 +2,7 @@
 
 import React from "react";
 import { LikeItem } from "../../lib/likes";
+import { resolveApiMediaUrl } from "../../lib/api";
 
 interface LikeCardProps {
   item: LikeItem;
@@ -11,7 +12,7 @@ interface LikeCardProps {
 export function LikeCard({ item, isBlurred = false }: LikeCardProps) {
   const profile = item.profile;
   const photos = (profile.photos || []).sort((a, b) => a.position - b.position);
-  const firstPhoto = photos.length > 0 ? photos[0].url : "";
+  const firstPhoto = photos.length > 0 ? resolveApiMediaUrl(photos[0].url) : "";
 
   const initial =
     profile.display_name
@@ -29,11 +30,10 @@ export function LikeCard({ item, isBlurred = false }: LikeCardProps) {
           <img
             src={firstPhoto}
             alt={isBlurred ? "Blurred profile" : `${initial}, ${profile.age}`}
-            className={`w-full h-full object-cover object-center transition-transform duration-500 ${
-              isBlurred
+            className={`w-full h-full object-cover object-center transition-transform duration-500 ${isBlurred
                 ? "blur-xl scale-125 saturate-150 contrast-125 brightness-90"
                 : "group-hover:scale-105"
-            }`}
+              }`}
             loading="lazy"
           />
         ) : (

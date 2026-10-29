@@ -12,12 +12,13 @@ import {
   getReceivedRequests,
   acceptMessageRequest,
   declineMessageRequest,
-  replyToMessageRequest,
+  getRequestConversations,
   type MessageRequest,
 } from "../../lib/messageRequests";
 
 import { getMyMatches, type ApiMatch } from "../../lib/chat";
-import { getAccessToken } from "../../lib/token";
+import { getAccessToken, getUserId } from "../../lib/token";
+import { resolveApiMediaUrl } from "../../lib/api";
 import { MatchStrip } from "./MatchStrip";
 import { ChatList } from "./ChatList";
 import { IndividualChatScreen } from "./IndividualChatScreen";
@@ -57,9 +58,6 @@ export function ChatsScreen() {
   const [requests, setRequests] = useState<MessageRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requestsError, setRequestsError] = useState("");
-  const [requestReplies, setRequestReplies] = useState<
-    Record<number, string>
-  >({});
   const [busyRequestId, setBusyRequestId] = useState<number | null>(null);
   const [requestNotice, setRequestNotice] = useState("");
 
@@ -79,7 +77,10 @@ export function ChatsScreen() {
     setMatchesError("");
 
     try {
-      const data = await getMyMatches(token);
+      const [data, requestConversations] = await Promise.all([
+        getMyMatches(token),
+        getRequestConversations(token),
+      ]);
 
       const mappedMatches: ConversationItem[] = data.map((match) => {
         const lastMsgText = match.last_message
@@ -92,7 +93,9 @@ export function ChatsScreen() {
         return {
           id: String(match.id),
           name: match.user.profile?.display_name || match.user.name,
-          avatar: match.user.profile?.avatar || "",
+          avatar: match.user.profile?.avatar
+            ? resolveApiMediaUrl(match.user.profile.avatar)
+            : "",
           isOnline: true,
           lastMessage: lastMsgText,
           timestamp: lastMsgTime,
@@ -101,7 +104,20 @@ export function ChatsScreen() {
         };
       });
 
-      setRealMatches(mappedMatches);
+      const mappedRequests: ConversationItem[] = requestConversations.map((request) => ({
+        id: String(request.id),
+        name: request.other_user.name,
+        avatar: "",
+        isOnline: true,
+        lastMessage: request.pending_messages?.at(-1) || request.content,
+        timestamp: formatConversationTime(request.created_at),
+        messages: [],
+        otherUserId: request.other_user.id,
+        conversationKind: "request",
+        requestStatus: request.status === "accepted" ? "accepted" : "pending",
+        canSendPending: request.sender_id === getUserId(),
+      }));
+      setRealMatches([...mappedRequests, ...mappedMatches]);
     } catch (error) {
       console.error("Failed to load matches:", error);
 
@@ -173,7 +189,7 @@ export function ChatsScreen() {
       await loadMatches();
 
       setRequestNotice(
-        "Request accepted! Your match is now available in Chats."
+        "Request accepted! Your conversation is now available in Chats."
       );
     } catch (error) {
       setRequestsError(
@@ -207,51 +223,6 @@ export function ChatsScreen() {
     } catch (error) {
       setRequestsError(
         error instanceof Error ? error.message : "Could not decline request."
-      );
-    } finally {
-      setBusyRequestId(null);
-    }
-  }
-
-  async function handleReply(requestId: number) {
-    const token = getAccessToken();
-    const content = requestReplies[requestId]?.trim();
-
-    if (!token) {
-      setRequestsError("Please log in to continue.");
-      return;
-    }
-
-    if (!content) {
-      setRequestsError("Please enter a reply first.");
-      return;
-    }
-
-    setBusyRequestId(requestId);
-    setRequestsError("");
-    setRequestNotice("");
-
-    try {
-      await replyToMessageRequest(requestId, content, token);
-
-      setRequests((current) =>
-        current.filter((request) => request.id !== requestId)
-      );
-
-      setRequestReplies((current) => {
-        const updated = { ...current };
-        delete updated[requestId];
-        return updated;
-      });
-
-      await loadMatches();
-
-      setRequestNotice(
-        "Reply sent! Your conversation has been started."
-      );
-    } catch (error) {
-      setRequestsError(
-        error instanceof Error ? error.message : "Could not send reply."
       );
     } finally {
       setBusyRequestId(null);
@@ -409,7 +380,7 @@ export function ChatsScreen() {
                   No conversations yet
                 </h2>
                 <p className="mt-2 max-w-xs text-sm text-slate-400">
-                  When you match with someone or accept a message request, your chats will appear here.
+                  Your matches and message-request conversations will appear here.
                 </p>
                 <button
                   type="button"
@@ -546,43 +517,6 @@ export function ChatsScreen() {
                               </p>
                             )}
                           </div>
-                        </div>
-
-                        {/* Reply input */}
-                        <div className="mt-4">
-                          <input
-                            type="text"
-                            value={requestReplies[request.id] || ""}
-                            onChange={(event) =>
-                              setRequestReplies((current) => ({
-                                ...current,
-                                [request.id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Write a reply to accept..."
-                            disabled={busy}
-                            className="w-full rounded-xl border border-white/10 bg-[#0B0C15] px-3.5 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-[#B365FC]/60 disabled:opacity-50"
-                            onKeyDown={(event) => {
-                              if (
-                                event.key === "Enter" &&
-                                !event.nativeEvent.isComposing
-                              ) {
-                                event.preventDefault();
-                                void handleReply(request.id);
-                              }
-                            }}
-                          />
-
-                          <button
-                            type="button"
-                            disabled={
-                              busy || !requestReplies[request.id]?.trim()
-                            }
-                            onClick={() => void handleReply(request.id)}
-                            className="mt-2 w-full rounded-xl bg-[#B365FC] px-4 py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            {busy ? "Please wait..." : "Reply & Accept"}
-                          </button>
                         </div>
 
                         {/* Accept / Decline */}

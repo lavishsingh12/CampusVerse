@@ -11,7 +11,7 @@ interface ProfileStatsProps {
 
 export function ProfileStats({ stats, onCompletenessClick }: ProfileStatsProps) {
   return (
-    <div className="grid grid-cols-3 gap-2 w-full">
+    <div className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2 w-full">
       {/* 1. Likes Left Today */}
       <div className="rounded-[18px] bg-[#14162B] border border-white/[0.07] p-3 flex items-center gap-2.5 shadow-sm">
         <div className="w-8 h-8 rounded-full bg-pink-500/15 text-[#E93C9A] flex items-center justify-center shrink-0">

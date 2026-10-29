@@ -10,9 +10,16 @@ class Message(Base):
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    match_id: Mapped[int] = mapped_column(
+    # A message belongs either to a romantic match or an accepted request.
+    # Those concepts must remain independent.
+    match_id: Mapped[int | None] = mapped_column(
         ForeignKey("matches.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    message_request_id: Mapped[int | None] = mapped_column(
+        ForeignKey("message_requests.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     sender_id: Mapped[int] = mapped_column(
@@ -28,4 +35,5 @@ class Message(Base):
     )
 
     match: Mapped["Match"] = relationship("Match")
+    message_request: Mapped["MessageRequest"] = relationship("MessageRequest")
     sender: Mapped["User"] = relationship("User")

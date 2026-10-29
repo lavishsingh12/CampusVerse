@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -25,6 +25,12 @@ class MessageRequest(Base):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
 
+    pending_messages: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        default=list,
+    )
+
     status: Mapped[str] = mapped_column(
         String(20),
         default="pending",
@@ -45,4 +51,9 @@ class MessageRequest(Base):
     receiver: Mapped["User"] = relationship(
         "User",
         foreign_keys=[receiver_id],
+    )
+
+    __table_args__ = (
+        CheckConstraint("sender_id <> receiver_id", name="ck_message_request_distinct_users"),
+        CheckConstraint("status IN ('pending', 'accepted', 'rejected')", name="ck_message_request_status"),
     )

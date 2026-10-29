@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -24,5 +26,12 @@ class PhotoOrderItem(BaseModel):
 
 class ReorderPhotosRequest(BaseModel):
     photos: list[PhotoOrderItem]
+
+
+class ProfilePhotoSyncItem(BaseModel):
+    kind: Literal["existing", "url", "upload"]
+    photo_id: int | None = None
+    url: str | None = None
+    file_index: int | None = None
 
 

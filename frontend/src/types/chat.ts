@@ -27,4 +27,7 @@ export interface ConversationItem {
   unreadCount?: number;
   messages: ChatMessage[];
   otherUserId?: number;
+  conversationKind?: "match" | "request";
+  requestStatus?: "pending" | "accepted";
+  canSendPending?: boolean;
 }

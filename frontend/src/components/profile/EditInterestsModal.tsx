@@ -9,7 +9,7 @@ interface EditInterestsModalProps {
   currentInterests: TagItem[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updated: TagItem[]) => void;
+  onSave: (updated: TagItem[]) => Promise<void>;
 }
 
 export function EditInterestsModal({
@@ -20,6 +20,8 @@ export function EditInterestsModal({
 }: EditInterestsModalProps) {
   const [selected, setSelected] = useState<TagItem[]>(currentInterests);
   const [customLabel, setCustomLabel] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   React.useEffect(() => {
     setSelected(currentInterests);
@@ -30,7 +32,7 @@ export function EditInterestsModal({
   const toggleInterest = (item: TagItem) => {
     const exists = selected.some((s) => s.label.toLowerCase() === item.label.toLowerCase());
     if (exists) {
-      if (selected.length <= 1) return; // Keep at least 1
+      if (selected.length <= 3) return;
       setSelected(selected.filter((s) => s.label.toLowerCase() !== item.label.toLowerCase()));
     } else {
       if (selected.length >= 10) return; // Limit to 10 max
@@ -41,7 +43,7 @@ export function EditInterestsModal({
   const handleAddCustom = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = customLabel.trim();
-    if (!trimmed) return;
+    if (!trimmed || selected.length >= 10) return;
     if (selected.some((s) => s.label.toLowerCase() === trimmed.toLowerCase())) {
       setCustomLabel("");
       return;
@@ -55,14 +57,26 @@ export function EditInterestsModal({
     setCustomLabel("");
   };
 
-  const handleSave = () => {
-    onSave(selected);
-    onClose();
+  const handleSave = async () => {
+    if (selected.length < 3) {
+      setSaveError("Select at least 3 interests before saving.");
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await onSave(selected);
+      onClose();
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "Could not save interests.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg max-h-[85vh] rounded-t-[28px] sm:rounded-[28px] bg-[#121424] border border-white/10 shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg max-h-[85dvh] rounded-t-[28px] sm:rounded-[28px] bg-[#121424] border border-white/10 shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/[0.08] shrink-0">
           <div>
@@ -74,6 +88,7 @@ export function EditInterestsModal({
           <button
             type="button"
             onClick={onClose}
+            disabled={saving}
             aria-label="Close interests modal"
             className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
           >
@@ -82,7 +97,7 @@ export function EditInterestsModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5">
+        <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar p-5 space-y-5">
           {/* Selected Chips */}
           <div>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
@@ -116,7 +131,7 @@ export function EditInterestsModal({
             />
             <button
               type="submit"
-              disabled={!customLabel.trim()}
+              disabled={!customLabel.trim() || selected.length >= 10 || saving}
               className="px-4 py-2 rounded-xl bg-[#B365FC]/20 hover:bg-[#B365FC]/30 text-[#B365FC] disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold border border-[#B365FC]/30 transition-all flex items-center gap-1"
             >
               <PlusIcon className="w-3.5 h-3.5 stroke-[3]" />
@@ -139,11 +154,10 @@ export function EditInterestsModal({
                     key={item.id}
                     type="button"
                     onClick={() => toggleInterest(item)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95 ${
-                      isSelected
-                        ? "bg-[#B365FC]/30 border-[#B365FC] text-white shadow-sm"
-                        : "bg-[#181B30] border-white/10 text-slate-300 hover:text-white hover:border-white/20"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95 ${isSelected
+                      ? "bg-[#B365FC]/30 border-[#B365FC] text-white shadow-sm"
+                      : "bg-[#181B30] border-white/10 text-slate-300 hover:text-white hover:border-white/20"
+                      }`}
                   >
                     <span>{item.emoji}</span>
                     <span>{item.label}</span>
@@ -156,17 +170,18 @@ export function EditInterestsModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-white/[0.08] bg-[#0E101D] flex items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-3 border-t border-white/[0.08] bg-[#0E101D] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <span className="text-xs text-slate-400">
             {selected.length} interests active
           </span>
+          {saveError && <p role="alert" className="text-xs text-red-300">{saveError}</p>}
           <button
             type="button"
-            onClick={handleSave}
-            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#9B42F6] to-[#E93C9A] text-white text-xs font-bold shadow-lg shadow-purple-500/25 hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5"
+            onClick={() => void handleSave()}
+            disabled={saving || selected.length < 3}
+            className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#9B42F6] to-[#E93C9A] text-white text-xs font-bold shadow-lg shadow-purple-500/25 hover:opacity-95 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
           >
-            <CheckIcon className="w-4 h-4" />
-            <span>Save Interests</span>
+            {saving ? <span>Saving...</span> : <><CheckIcon className="w-4 h-4" /><span>Save Interests</span></>}
           </button>
         </div>
       </div>

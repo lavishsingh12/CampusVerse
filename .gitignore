@@ -23,6 +23,10 @@ downloads/
 eggs/
 .eggs/
 lib/
+!frontend/src/lib/
+frontend/src/lib/*
+!frontend/src/lib/api.ts
+!frontend/src/lib/profile.ts
 lib64/
 parts/
 sdist/
@@ -67,6 +71,7 @@ lerna-debug.log*
 *.sqlite3
 *.db
 pgdata/
+backend/uploads/
 
 # OS & IDE Files
 .DS_Store

@@ -26,9 +26,7 @@ async def get_my_profile(
 ):
     result = await db.execute(
         select(User)
-        .options(
-            selectinload(User.profile).selectinload(Profile.photos)
-        )
+        .options(selectinload(User.profile).selectinload(Profile.photos))
         .where(User.id == user_id)
     )
     user = result.scalar_one_or_none()
@@ -72,6 +70,11 @@ async def get_my_profile(
         year=profile.year,
         branch=profile.branch,
         bio=profile.bio,
+        university=profile.university,
+        campus=profile.campus,
+        lifestyle=profile.lifestyle,
+        interests=profile.interests,
+        icebreakers=profile.icebreakers,
         is_verified=profile.is_verified,
         is_active=profile.is_active,
         email=user.email,
@@ -102,9 +105,7 @@ async def create_profile(
             detail="You cannot create a profile for another user",
         )
 
-    result = await db.execute(
-        select(User).where(User.id == profile_data.user_id)
-    )
+    result = await db.execute(select(User).where(User.id == profile_data.user_id))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -132,6 +133,19 @@ async def create_profile(
         year=profile_data.year,
         branch=profile_data.branch,
         bio=profile_data.bio,
+        university=profile_data.university,
+        campus=profile_data.campus,
+        lifestyle=profile_data.lifestyle,
+        interests=(
+            [item.model_dump() for item in profile_data.interests]
+            if profile_data.interests is not None
+            else None
+        ),
+        icebreakers=(
+            [item.model_dump() for item in profile_data.icebreakers]
+            if profile_data.icebreakers is not None
+            else None
+        ),
     )
 
     db.add(profile)
@@ -146,9 +160,7 @@ async def get_profile(
     profile_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Profile).where(Profile.id == profile_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == profile_id))
     profile = result.scalar_one_or_none()
 
     if not profile:
@@ -167,9 +179,7 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
 ):
-    result = await db.execute(
-        select(Profile).where(Profile.id == profile_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == profile_id))
     profile = result.scalar_one_or_none()
 
     if not profile:
@@ -201,9 +211,7 @@ async def activate_profile(
     db: AsyncSession = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id),
 ):
-    result = await db.execute(
-        select(Profile).where(Profile.id == profile_id)
-    )
+    result = await db.execute(select(Profile).where(Profile.id == profile_id))
     profile = result.scalar_one_or_none()
 
     if not profile:
@@ -225,9 +233,7 @@ async def activate_profile(
         )
 
     result = await db.execute(
-        select(func.count(ProfilePhoto.id)).where(
-            ProfilePhoto.profile_id == profile_id
-        )
+        select(func.count(ProfilePhoto.id)).where(ProfilePhoto.profile_id == profile_id)
     )
     photo_count = result.scalar_one()
 
@@ -243,4 +249,3 @@ async def activate_profile(
     await db.refresh(profile)
 
     return profile
-
